@@ -1,155 +1,62 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
-require('dotenv').config();
+import express from "express";
+import { Client } from "@notionhq/client";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
-app.use(cors());
-app.use(express.json());
+const notion = new Client({ auth: process.env.NOTION_SECRET });
 
-app.get('/projects', async (req, res) => {
-  const expand = req.query.expand === 'all';
+const projectsDatabaseId = process.env.NOTION_PROJECTS_DB_ID;
+const tasksDatabaseId = process.env.NOTION_TASKS_DB_ID;
 
-  try {
-<<<<<<< HEAD
-    const response = await axios.post(
-      `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
-      {},
-=======
-        let allResults = [];
-    let hasMore = true;
-    let nextCursor = undefined;
+// Utility function to paginate through large Notion DBs
+async function getAllPages(databaseId) {
+  let allPages = [];
+  let cursor = undefined;
 
-    while (hasMore) {
-      const response = await axios.post(
-        `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
-        nextCursor ? { start_cursor: nextCursor } : {},
-
->>>>>>> 0dca5f0 (🧠 Add Notion pagination to fetch all projects reliably)
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
-          'Notion-Version': '2022-06-28',
-          'Content-Type': 'application/json',
-        }
-      }
-    );
-
-<<<<<<< HEAD
-    const results = response.data.results.map(page => {
-=======
-    const results = allResults.map(page => {
->>>>>>> 0dca5f0 (🧠 Add Notion pagination to fetch all projects reliably)
-      const props = page.properties;
-
-      const base = {
-        id: page.id,
-        name: props['Project name']?.title?.[0]?.plain_text || '',
-        status: props['Status']?.select?.name || '',
-        assignee: props['Assignee']?.people?.[0]?.name || '',
-        startDate: props['Start date']?.date?.start || '',
-        tags: props['Tags']?.multi_select?.map(t => t.name) || []
-      };
-
-      if (!expand) return base;
-
-      return {
-        ...base,
-        team: props['Team']?.multi_select?.map(t => t.name) || [],
-        strategicImpact: props['Strategic Impact']?.rich_text?.[0]?.plain_text || '',
-        stakeholders: props['Stakeholders']?.people?.map(p => p.name) || [],
-        aiInvolvement: props['AI Involvement']?.rich_text?.[0]?.plain_text || '',
-        currentPrompt: props['Current Prompt']?.rich_text?.[0]?.plain_text || '',
-        nextGptTask: props['Next GPT Task']?.rich_text?.[0]?.plain_text || '',
-        mafkSummary: props['MAFK Summary']?.rich_text?.[0]?.plain_text || '',
-        risks: props['Risks / Blocks']?.rich_text?.[0]?.plain_text || '',
-        successCriteria: props['Success Criteria']?.rich_text?.[0]?.plain_text || '',
-        priority: props['Priority']?.select?.name || '',
-        gptNotes: props['GPT Notes']?.rich_text?.[0]?.plain_text || '',
-        client: props['Client']?.rich_text?.[0]?.plain_text || '',
-        dueDate: props['Due Date']?.date?.start || '',
-        repository: props['Repository']?.url || ''
-      };
+  do {
+    const response = await notion.databases.query({
+      database_id: databaseId,
+      start_cursor: cursor,
     });
 
-<<<<<<< HEAD
-    res.status(200).json({ projects: results });
-=======
-          allResults.push(...response.data.results);
-      hasMore = response.data.has_more;
-      nextCursor = response.data.next_cursor;
-    }
+    allPages = allPages.concat(response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
 
-    res.status(200).json({ projects: results });
+  return allPages;
+}
 
->>>>>>> 0dca5f0 (🧠 Add Notion pagination to fetch all projects reliably)
+// Route: GET /projects
+app.get("/projects", async (req, res) => {
+  try {
+    const results = await getAllPages(projectsDatabaseId);
+    res.json({ total: results.length, results });
   } catch (error) {
-    console.error('Error fetching projects:', error.message);
-    res.status(500).json({ error: 'Failed to fetch from Notion' });
+    console.error("❌ Error fetching projects:", error.message);
+    res.status(500).json({ error: "Failed to fetch projects." });
   }
 });
 
-<<<<<<< HEAD
-=======
-app.get('/tasks', async (req, res) => {
-  const expand = req.query.expand === 'all';
-
+// Route: GET /tasks
+app.get("/tasks", async (req, res) => {
   try {
-    const response = await axios.post(
-      `https://api.notion.com/v1/databases/${process.env.NOTION_TASKS_DATABASE_ID}/query`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
-          'Notion-Version': '2022-06-28',
-          'Content-Type': 'application/json',
-        }
-      }
-    );
-
-    const results = allResults.map(page => {
-      const props = page.properties;
-
-      const base = {
-        id: page.id,
-        project: props['Project name']?.title?.[0]?.plain_text || '',
-        status: props['Status']?.select?.name || '',
-        assignee: props['Assignee']?.people?.[0]?.name || '',
-        startDate: props['Start date']?.date?.start || '',
-        priority: props['Priority']?.select?.name || ''
-      };
-
-      if (!expand) return base;
-
-      return {
-        ...base,
-        team: props['Team']?.multi_select?.map(t => t.name) || [],
-        strategicImpact: props['Strategic Impact']?.rich_text?.[0]?.plain_text || '',
-        stakeholders: props['Stakeholders']?.people?.map(p => p.name) || [],
-        aiInvolvement: props['AI Involvement']?.rich_text?.[0]?.plain_text || '',
-        currentPrompt: props['Current Prompt']?.rich_text?.[0]?.plain_text || '',
-        nextGptTask: props['Next GPT Task']?.rich_text?.[0]?.plain_text || '',
-        mafkSummary: props['MAFK Summary']?.rich_text?.[0]?.plain_text || '',
-        risks: props['Risks / Blocks']?.rich_text?.[0]?.plain_text || '',
-        successCriteria: props['Success Criteria']?.rich_text?.[0]?.plain_text || '',
-        tags: props['Tags']?.multi_select?.map(t => t.name) || [],
-        gptNotes: props['GPT Notes']?.rich_text?.[0]?.plain_text || '',
-        client: props['Client']?.rich_text?.[0]?.plain_text || '',
-        dueDate: props['Due Date']?.date?.start || '',
-        repository: props['Repository']?.url || ''
-      };
-    });
-
-    res.status(200).json({ tasks: results });
+    const results = await getAllPages(tasksDatabaseId);
+    res.json({ total: results.length, results });
   } catch (error) {
-    console.error('Error fetching tasks:', error.message);
-    res.status(500).json({ error: 'Failed to fetch tasks from Notion' });
+    console.error("❌ Error fetching tasks:", error.message);
+    res.status(500).json({ error: "Failed to fetch tasks." });
   }
 });
 
->>>>>>> 0dca5f0 (🧠 Add Notion pagination to fetch all projects reliably)
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Default health check
+app.get("/", (req, res) => {
+  res.send("🔄 MAF.OS Notion API is running");
+});
+
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
