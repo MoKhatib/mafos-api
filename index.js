@@ -1,62 +1,52 @@
-import express from "express";
-import { Client } from "@notionhq/client";
-import dotenv from "dotenv";
-
-dotenv.config();
-
+const { Client } = require('@notionhq/client');
+const express = require('express');
 const app = express();
-const port = process.env.PORT || 10000;
+const port = 10000;
 
-const notion = new Client({ auth: process.env.NOTION_SECRET });
+require('dotenv').config();
 
-const projectsDatabaseId = process.env.NOTION_PROJECTS_DB_ID;
-const tasksDatabaseId = process.env.NOTION_TASKS_DB_ID;
+const notion = new Client({ auth: process.env.NOTION_KEY });
+const projectsDb = process.env.NOTION_PROJECTS_DB;
+const tasksDb = process.env.NOTION_TASKS_DB;
 
-// Utility function to paginate through large Notion DBs
-async function getAllPages(databaseId) {
-  let allPages = [];
-  let cursor = undefined;
-
+async function paginate(databaseId) {
+  let results = [];
+  let cursor;
   do {
     const response = await notion.databases.query({
       database_id: databaseId,
       start_cursor: cursor,
     });
-
-    allPages = allPages.concat(response.results);
-    cursor = response.has_more ? response.next_cursor : undefined;
+    results = results.concat(response.results);
+    cursor = response.has_more ? response.next_cursor : null;
   } while (cursor);
-
-  return allPages;
+  return results;
 }
 
-// Route: GET /projects
-app.get("/projects", async (req, res) => {
+app.get('/projects', async (req, res) => {
   try {
-    const results = await getAllPages(projectsDatabaseId);
-    res.json({ total: results.length, results });
+    const projects = await paginate(projectsDb);
+    res.json(projects);
   } catch (error) {
-    console.error("❌ Error fetching projects:", error.message);
-    res.status(500).json({ error: "Failed to fetch projects." });
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch projects.' });
   }
 });
 
-// Route: GET /tasks
-app.get("/tasks", async (req, res) => {
+app.get('/tasks', async (req, res) => {
   try {
-    const results = await getAllPages(tasksDatabaseId);
-    res.json({ total: results.length, results });
+    const tasks = await paginate(tasksDb);
+    res.json(tasks);
   } catch (error) {
-    console.error("❌ Error fetching tasks:", error.message);
-    res.status(500).json({ error: "Failed to fetch tasks." });
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch tasks.' });
   }
 });
 
-// Default health check
-app.get("/", (req, res) => {
-  res.send("🔄 MAF.OS Notion API is running");
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
