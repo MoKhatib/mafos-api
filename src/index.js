@@ -10,15 +10,15 @@ const PORT = process.env.PORT || DEFAULT_PORT;
 
 app.use(express.json());
 
-// ✅ Health check route
+// ✅ Health check
 app.get('/', (req, res) => {
   res.send('MAF.OS API is alive 🔁');
 });
 
-// ✅ Notion projects fetch route
+// ✅ Notion Projects Endpoint
 app.get('/projects', async (req, res) => {
   try {
-    const response = await axios.post(
+    const notionResponse = await axios.post(
       `https://api.notion.com/v1/databases/${process.env.PROJECTS_DB_ID}/query`,
       {},
       {
@@ -26,15 +26,14 @@ app.get('/projects', async (req, res) => {
           'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json',
-        }
+        },
       }
     );
 
-    // Format and return only necessary fields
-    const projects = response.data.results.map((page) => ({
+    const projects = notionResponse.data.results.map((page) => ({
       id: page.id,
-      title: page.properties?.Name?.title?.[0]?.plain_text || 'Untitled',
-      lastEdited: page.last_edited_time
+      title: page.properties?.["Project name"]?.title?.[0]?.plain_text || 'Untitled',
+      lastEdited: page.last_edited_time,
     }));
 
     res.status(200).json(projects);
@@ -44,7 +43,7 @@ app.get('/projects', async (req, res) => {
   }
 });
 
-// ✅ Start server
+// ✅ Launch the server
 app.listen(PORT, () => {
   console.log(`🚀 MAF.OS API is live at http://localhost:${PORT}`);
 });
