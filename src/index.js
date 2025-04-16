@@ -19,11 +19,11 @@ app.get('/', (req, res) => {
 app.get('/projects', async (req, res) => {
   try {
     const response = await axios.post(
-      `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
+      `https://api.notion.com/v1/databases/${process.env.PROJECTS_DB_ID}/query`,
       {},
       {
         headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json',
         }
