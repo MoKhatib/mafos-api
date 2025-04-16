@@ -1,50 +1,63 @@
-const { Client } = require('@notionhq/client');
-const express = require('express');
+import express from 'express';
+import { Client } from '@notionhq/client';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 const app = express();
 const port = 10000;
 
-require('dotenv').config();
+const notion = new Client({
+  auth: 'ntn_b3245542151Ytb8PV4qasCMJPCqrB7yCKQZxpEOK0FEbe1',
+});
 
-const notion = new Client({ auth: process.env.NOTION_KEY });
-const projectsDb = process.env.NOTION_PROJECTS_DB;
-const tasksDb = process.env.NOTION_TASKS_DB;
+const projectsDatabaseId = '1159327e131e4f6a996108edb5b2b5b8';
+const tasksDatabaseId = '1d60c1730b0780db85dcd951aa22a720';
 
-async function paginate(databaseId) {
+app.use(express.json());
+
+async function paginate(queryFn, options) {
   let results = [];
-  let cursor;
-  do {
-    const response = await notion.databases.query({
-      database_id: databaseId,
+  let cursor = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await queryFn({
+      ...options,
       start_cursor: cursor,
     });
     results = results.concat(response.results);
-    cursor = response.has_more ? response.next_cursor : null;
-  } while (cursor);
+    cursor = response.next_cursor;
+    hasMore = response.has_more;
+  }
+
   return results;
 }
 
 app.get('/projects', async (req, res) => {
   try {
-    const projects = await paginate(projectsDb);
-    res.json(projects);
+    const projects = await paginate(notion.databases.query, {
+      database_id: projectsDatabaseId,
+    });
+
+    res.json({ projects });
   } catch (error) {
-    console.error(error);
+    console.error('Failed to fetch projects:', error.message);
     res.status(500).json({ error: 'Failed to fetch projects.' });
   }
 });
 
 app.get('/tasks', async (req, res) => {
   try {
-    const tasks = await paginate(tasksDb);
-    res.json(tasks);
+    const tasks = await paginate(notion.databases.query, {
+      database_id: tasksDatabaseId,
+    });
+
+    res.json({ tasks });
   } catch (error) {
-    console.error(error);
+    console.error('Failed to fetch tasks:', error.message);
     res.status(500).json({ error: 'Failed to fetch tasks.' });
   }
-});
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
 });
 
 app.listen(port, () => {
